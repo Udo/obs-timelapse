@@ -5,6 +5,7 @@
 
 #include <obs-module.h>
 
+#include <QCloseEvent>
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDialogButtonBox>
@@ -75,22 +76,22 @@ TimelapseDialog::TimelapseDialog(Controller &controller, QWidget *parent) : QDia
 	mode_->setToolTip(text("Timelapse.OutputModeHelp"));
 
 	interval_ = new QDoubleSpinBox(this);
-	interval_->setRange(0.1, 86400.0);
+	interval_->setRange(MinimumIntervalSeconds, MaximumIntervalSeconds);
 	interval_->setDecimals(1);
 	interval_->setSuffix(text("Timelapse.SecondsSuffix"));
 	interval_->setToolTip(text("Timelapse.IntervalHelp"));
 
 	playbackFps_ = new QSpinBox(this);
-	playbackFps_->setRange(1, 60);
+	playbackFps_->setRange(MinimumPlaybackFps, MaximumPlaybackFps);
 	playbackFps_->setSuffix(text("Timelapse.FpsSuffix"));
 	playbackFps_->setMinimumWidth(180);
 	playbackFps_->setToolTip(text("Timelapse.PlaybackFpsHelp"));
 	pngCompression_ = new QSpinBox(this);
-	pngCompression_->setRange(0, 9);
+	pngCompression_->setRange(MinimumPngCompression, MaximumPngCompression);
 	pngCompression_->setMinimumWidth(180);
 	pngCompression_->setToolTip(text("Timelapse.PngCompressionHelp"));
 	queueCapacity_ = new QSpinBox(this);
-	queueCapacity_->setRange(2, 32);
+	queueCapacity_->setRange(static_cast<int>(MinimumQueueCapacity), static_cast<int>(MaximumQueueCapacity));
 	queueCapacity_->setMinimumWidth(180);
 	queueCapacity_->setToolTip(text("Timelapse.QueueHelp"));
 
@@ -127,7 +128,6 @@ TimelapseDialog::TimelapseDialog(Controller &controller, QWidget *parent) : QDia
 	pathLayout->addWidget(openFolderButton_, 0, Qt::AlignTop);
 	errorValue_ = new QLabel(this);
 	errorValue_->setWordWrap(true);
-	errorValue_->setStyleSheet(QStringLiteral("color: #d9534f;"));
 
 	auto *statusGroup = new QGroupBox(text("Timelapse.StatusGroup"), this);
 	auto *statusForm = new QFormLayout(statusGroup);
@@ -168,6 +168,30 @@ TimelapseDialog::TimelapseDialog(Controller &controller, QWidget *parent) : QDia
 
 	setFormSettings(controller_.settings());
 	refreshStatus();
+}
+
+bool TimelapseDialog::persistSettings(QString &error)
+{
+	if (controller_.active())
+		return true;
+	return controller_.updateSettings(formSettings(), error);
+}
+
+void TimelapseDialog::closeEvent(QCloseEvent *event)
+{
+	QString error;
+	if (!persistSettings(error)) {
+		event->ignore();
+		showError(error);
+		return;
+	}
+	QDialog::closeEvent(event);
+}
+
+void TimelapseDialog::reject()
+{
+	// Route Esc through closeEvent so it persists settings like the Close button.
+	close();
 }
 
 CaptureSettings TimelapseDialog::formSettings() const
@@ -251,7 +275,10 @@ void TimelapseDialog::refreshStatus()
 	const bool active = controller_.active();
 	const bool stopping = controller_.stopping();
 
-	stateValue_->setText(sessionStateName(status.state));
+	const std::array<const char *, 5> stateKeys = {"Timelapse.StateStarting", "Timelapse.StateRunning",
+						 "Timelapse.StateStopping", "Timelapse.StateStopped",
+						 "Timelapse.StateFailed"};
+	stateValue_->setText(text(stateKeys[static_cast<std::size_t>(status.state)]));
 	stateValue_->setStyleSheet(stateStyleSheet(status.state));
 
 	QString dropped = QString::number(status.droppedFrames);
@@ -264,6 +291,7 @@ void TimelapseDialog::refreshStatus()
 	pathValue_->setText(status.outputPath.isEmpty() ? text("Timelapse.None") : status.outputPath);
 	openFolderButton_->setEnabled(!status.outputPath.isEmpty());
 	errorValue_->setText(status.error.isEmpty() ? text("Timelapse.None") : status.error);
+	errorValue_->setStyleSheet(status.error.isEmpty() ? QString() : QStringLiteral("color: #d9534f;"));
 
 	startStopButton_->setText(stopping ? text("Timelapse.Stopping")
 				  : active ? text("Timelapse.Stop")

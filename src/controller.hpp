@@ -8,13 +8,14 @@
 #include <memory>
 #include <thread>
 
-class QDialog;
 class QLabel;
 class QPushButton;
 class QTimer;
 class QWidget;
 
 namespace timelapse {
+
+class TimelapseDialog;
 
 class Controller final {
 public:
@@ -26,6 +27,7 @@ public:
 
 	void showDialog();
 	void installControlsButton() noexcept;
+	bool updateSettings(const CaptureSettings &settings, QString &error);
 	bool start(const CaptureSettings &settings, QString &error);
 	void stop(const QString &reason);
 	void shutdown() noexcept;
@@ -41,7 +43,7 @@ private:
 	void refreshControlsButton();
 
 	QWidget *mainWindow_ = nullptr;
-	QPointer<QDialog> dialog_;
+	QPointer<TimelapseDialog> dialog_;
 	QPointer<QWidget> controlsRow_;
 	QPointer<QPushButton> controlsButton_;
 	QPointer<QLabel> controlsCounter_;

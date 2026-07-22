@@ -11,7 +11,7 @@ Video only.
 1. Set up your scene and make sure OBS's video output is running.
 2. Open **Tools → OBS Timelapse…**.
 3. Pick the output directory, interval, and output mode.
-4. Click **Start timelapse**.
+4. Click **Start Timelapse**.
 5. Keep an eye on the State and frame counters while it runs.
 6. Click **Stop timelapse** before you move, disconnect, or unmount the output storage.
 

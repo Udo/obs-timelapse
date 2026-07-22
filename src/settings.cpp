@@ -91,13 +91,13 @@ QString validateSettings(const CaptureSettings &settings)
 {
 	if (settings.outputDirectory.trimmed().isEmpty())
 		return QStringLiteral("Choose an output directory.");
-	if (settings.intervalSeconds < 0.1 || settings.intervalSeconds > 86400.0)
+	if (settings.intervalSeconds < MinimumIntervalSeconds || settings.intervalSeconds > MaximumIntervalSeconds)
 		return QStringLiteral("The capture interval must be between 0.1 seconds and 24 hours.");
-	if (settings.playbackFps < 1 || settings.playbackFps > 60)
+	if (settings.playbackFps < MinimumPlaybackFps || settings.playbackFps > MaximumPlaybackFps)
 		return QStringLiteral("The playback frame rate must be between 1 and 60 FPS.");
-	if (settings.pngCompression < 0 || settings.pngCompression > 9)
+	if (settings.pngCompression < MinimumPngCompression || settings.pngCompression > MaximumPngCompression)
 		return QStringLiteral("PNG compression must be between 0 and 9.");
-	if (settings.queueCapacity < 2 || settings.queueCapacity > 32)
+	if (settings.queueCapacity < MinimumQueueCapacity || settings.queueCapacity > MaximumQueueCapacity)
 		return QStringLiteral("The frame queue must contain between 2 and 32 frames.");
 	return {};
 }

@@ -32,23 +32,6 @@ QString frameFileName(uint64_t sequence)
 
 } // namespace
 
-QString sessionStateName(SessionState state)
-{
-	switch (state) {
-	case SessionState::Starting:
-		return QStringLiteral("Starting");
-	case SessionState::Running:
-		return QStringLiteral("Running");
-	case SessionState::Stopping:
-		return QStringLiteral("Stopping");
-	case SessionState::Failed:
-		return QStringLiteral("Failed");
-	case SessionState::Stopped:
-		return QStringLiteral("Stopped");
-	}
-	return QStringLiteral("Unknown");
-}
-
 CaptureSession::CaptureSession(CaptureSettings settings) : settings_(std::move(settings)) {}
 
 CaptureSession::~CaptureSession()
@@ -131,7 +114,6 @@ bool CaptureSession::start(QString &error)
 			calculateEffectiveInterval(frameDivisor_, videoInfo.fps_num, videoInfo.fps_den);
 
 		availableFrames_.reserve(settings_.queueCapacity);
-		pendingFrames_.reserve(settings_.queueCapacity);
 		for (std::size_t index = 0; index < settings_.queueCapacity; ++index) {
 			auto frame = std::make_unique<Frame>();
 			frame->pixels.resize(static_cast<std::size_t>(frameBytes));
@@ -208,7 +190,7 @@ void CaptureSession::rawVideoCallback(void *parameter, video_data *frame) noexce
 	}
 }
 
-void CaptureSession::receiveFrame(const video_data &frame) noexcept
+void CaptureSession::receiveFrame(const video_data &frame)
 {
 	if (!accepting_.load(std::memory_order_relaxed) || !frame.data[0] || frame.linesize[0] < rowBytes_) {
 		droppedFrames_.fetch_add(1, std::memory_order_relaxed);
@@ -271,7 +253,7 @@ void CaptureSession::workerLoop() noexcept
 					continue;
 				}
 				frame = std::move(pendingFrames_.front());
-				pendingFrames_.erase(pendingFrames_.begin());
+				pendingFrames_.pop_front();
 			}
 
 			QString error;
@@ -281,18 +263,18 @@ void CaptureSession::workerLoop() noexcept
 			if (!written) {
 				setFailure(error);
 				accepting_.store(false);
-			}
-			if (written)
+			} else {
 				writtenFrames_.fetch_add(1);
+			}
 
 			{
 				std::lock_guard<std::mutex> lock(queueMutex_);
 				availableFrames_.push_back(std::move(frame));
 				if (state_.load() == SessionState::Failed) {
+					droppedFrames_.fetch_add(pendingFrames_.size());
 					while (!pendingFrames_.empty()) {
 						availableFrames_.push_back(std::move(pendingFrames_.front()));
-						pendingFrames_.erase(pendingFrames_.begin());
-						droppedFrames_.fetch_add(1);
+						pendingFrames_.pop_front();
 					}
 				}
 			}
@@ -392,8 +374,12 @@ SessionStatus CaptureSession::stop(const QString &reason) noexcept
 			stopRequested_ = true;
 		}
 		queueReady_.notify_all();
-		if (worker_.joinable() && worker_.get_id() != std::this_thread::get_id())
+		// stop() is controller-owned; calling it from the worker would make safe finalization impossible.
+		if (worker_.joinable()) {
+			if (worker_.get_id() == std::this_thread::get_id())
+				std::terminate();
 			worker_.join();
+		}
 
 		QString manifestError;
 		const bool failed = !status().error.isEmpty();

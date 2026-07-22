@@ -32,6 +32,10 @@ MkvWriter::~MkvWriter()
 bool MkvWriter::open(const QString &partialPath, const QString &finalPath, uint32_t width, uint32_t height, int fps,
 		     QString &error)
 {
+	if (!partialPath_.isEmpty()) {
+		error = QStringLiteral("An MKV writer cannot be reopened.");
+		return false;
+	}
 	partialPath_ = partialPath;
 	finalPath_ = finalPath;
 	QFile::remove(partialPath_);
@@ -97,7 +101,7 @@ bool MkvWriter::openInternal(uint32_t width, uint32_t height, int fps, QString &
 
 	if (codec_->priv_data) {
 		av_opt_set(codec_->priv_data, "preset", "veryfast", 0);
-		av_opt_set(codec_->priv_data, "crf", "20", 0);
+		av_opt_set(codec_->priv_data, "crf", "18", 0);
 	}
 
 	result = avcodec_open2(codec_, encoder, nullptr);
@@ -129,8 +133,9 @@ bool MkvWriter::openInternal(uint32_t width, uint32_t height, int fps, QString &
 	headerWritten_ = true;
 
 	frame_ = av_frame_alloc();
-	if (!frame_) {
-		error = QStringLiteral("Could not allocate an MKV video frame.");
+	packet_ = av_packet_alloc();
+	if (!frame_ || !packet_) {
+		error = QStringLiteral("Could not allocate MKV frame storage.");
 		return false;
 	}
 	frame_->format = codec_->pix_fmt;
@@ -156,37 +161,27 @@ bool MkvWriter::openInternal(uint32_t width, uint32_t height, int fps, QString &
 
 bool MkvWriter::drainPackets(QString &error)
 {
-	AVPacket *packet = av_packet_alloc();
-	if (!packet) {
-		error = QStringLiteral("Could not allocate an encoded MKV packet.");
-		return false;
-	}
-
-	bool success = true;
 	for (;;) {
-		const int result = avcodec_receive_packet(codec_, packet);
+		const int result = avcodec_receive_packet(codec_, packet_);
 		if (result == AVERROR(EAGAIN) || result == AVERROR_EOF)
 			break;
 		if (result < 0) {
 			error = ffmpegError(QStringLiteral("Could not receive an encoded MKV frame"), result);
-			success = false;
-			break;
+			return false;
 		}
 
-		if (packet->duration <= 0)
-			packet->duration = 1;
-		av_packet_rescale_ts(packet, codec_->time_base, stream_->time_base);
-		packet->stream_index = stream_->index;
-		const int writeResult = av_interleaved_write_frame(format_, packet);
-		av_packet_unref(packet);
+		if (packet_->duration <= 0)
+			packet_->duration = 1;
+		av_packet_rescale_ts(packet_, codec_->time_base, stream_->time_base);
+		packet_->stream_index = stream_->index;
+		const int writeResult = av_interleaved_write_frame(format_, packet_);
+		av_packet_unref(packet_);
 		if (writeResult < 0) {
 			error = ffmpegError(QStringLiteral("Could not append a frame to the MKV file"), writeResult);
-			success = false;
-			break;
+			return false;
 		}
 	}
-	av_packet_free(&packet);
-	return success;
+	return true;
 }
 
 bool MkvWriter::writeFrame(const uint8_t *pixels, uint32_t stride, QString &error)
@@ -268,6 +263,8 @@ void MkvWriter::release() noexcept
 		sws_freeContext(scaler_);
 	if (frame_)
 		av_frame_free(&frame_);
+	if (packet_)
+		av_packet_free(&packet_);
 	if (codec_)
 		avcodec_free_context(&codec_);
 	if (format_)

@@ -4,6 +4,7 @@
 
 #include <QDialog>
 
+class QCloseEvent;
 class QComboBox;
 class QDoubleSpinBox;
 class QLabel;
@@ -21,6 +22,11 @@ struct SessionStatus;
 class TimelapseDialog final : public QDialog {
 public:
 	explicit TimelapseDialog(Controller &controller, QWidget *parent = nullptr);
+	bool persistSettings(QString &error);
+
+protected:
+	void closeEvent(QCloseEvent *event) override;
+	void reject() override;
 
 private:
 	void browseOutputDirectory();

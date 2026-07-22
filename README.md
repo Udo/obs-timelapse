@@ -25,6 +25,14 @@ sudo apt install ./obs-timelapse-[release]-x86_64-linux-gnu.deb
 
 APT pulls in the exact OBS, Qt 6, and FFmpeg runtime libraries recorded in the package metadata. Remove it with `sudo apt remove obs-timelapse`.
 
+### Arch Linux x86_64
+
+```sh
+sudo pacman -U ./obs-timelapse-[release]-1-x86_64.pkg.tar.zst
+```
+
+The package targets the current Arch `obs-studio`, Qt 6, and FFmpeg packages. Remove it with `sudo pacman -R obs-timelapse`.
+
 ### macOS (Apple Silicon and Intel)
 
 Open `obs-timelapse-[release]-macos-universal.pkg` and follow the installer. The development package isn't Developer ID signed or notarized, so Gatekeeper may balk — Control-click the package, choose **Open**, and confirm once.

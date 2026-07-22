@@ -7,7 +7,6 @@
 #include <obs-module.h>
 #include <plugin-support.h>
 
-#include <QDialog>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
@@ -150,6 +149,17 @@ void Controller::refreshControlsButton()
 	}
 }
 
+bool Controller::updateSettings(const CaptureSettings &settings, QString &error)
+{
+	error = validateSettings(settings);
+	if (!error.isEmpty())
+		return false;
+	if (!saveSettings(settings, error))
+		return false;
+	settings_ = settings;
+	return true;
+}
+
 bool Controller::start(const CaptureSettings &settings, QString &error)
 {
 	if (shuttingDown_) {
@@ -174,11 +184,10 @@ bool Controller::start(const CaptureSettings &settings, QString &error)
 		lastStatus_ = session->status();
 		return false;
 	}
-	if (!saveSettings(settings, error)) {
+	if (!updateSettings(settings, error)) {
 		lastStatus_ = session->stop(QStringLiteral("configuration save failed"));
 		return false;
 	}
-	settings_ = settings;
 	session_ = std::move(session);
 	lastStatus_ = session_->status();
 	return true;
@@ -231,8 +240,13 @@ void Controller::shutdown() noexcept
 	try {
 		if (maintenanceTimer_)
 			maintenanceTimer_->stop();
-		if (dialog_)
+		if (dialog_) {
+			QString error;
+			if (!dialog_->persistSettings(error) && !error.isEmpty())
+				obs_log(LOG_WARNING, "could not save dialog settings during shutdown: %s",
+					error.toUtf8().constData());
 			delete dialog_.data();
+		}
 		if (controlsRow_)
 			delete controlsRow_.data();
 		controlsRow_ = nullptr;

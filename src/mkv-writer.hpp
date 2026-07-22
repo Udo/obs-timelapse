@@ -7,6 +7,7 @@
 struct AVCodecContext;
 struct AVFormatContext;
 struct AVFrame;
+struct AVPacket;
 struct AVStream;
 struct SwsContext;
 
@@ -37,6 +38,7 @@ private:
 	AVCodecContext *codec_ = nullptr;
 	AVStream *stream_ = nullptr;
 	AVFrame *frame_ = nullptr;
+	AVPacket *packet_ = nullptr;
 	SwsContext *scaler_ = nullptr;
 	int64_t nextPts_ = 0;
 	bool headerWritten_ = false;

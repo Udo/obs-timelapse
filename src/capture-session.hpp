@@ -10,6 +10,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -54,7 +55,7 @@ private:
 	};
 
 	static void rawVideoCallback(void *parameter, video_data *frame) noexcept;
-	void receiveFrame(const video_data &frame) noexcept;
+	void receiveFrame(const video_data &frame);
 	void workerLoop() noexcept;
 	bool writePng(const Frame &frame, QString &error) const;
 	bool writeManifest(const QString &stopReason, bool complete, QString &error) const;
@@ -89,12 +90,11 @@ private:
 	std::mutex queueMutex_;
 	std::condition_variable queueReady_;
 	std::vector<std::unique_ptr<Frame>> availableFrames_;
-	std::vector<std::unique_ptr<Frame>> pendingFrames_;
+	std::deque<std::unique_ptr<Frame>> pendingFrames_;
 	bool stopRequested_ = false;
 	std::thread worker_;
 	std::unique_ptr<MkvWriter> mkvWriter_;
 };
 
-QString sessionStateName(SessionState state);
 
 } // namespace timelapse
