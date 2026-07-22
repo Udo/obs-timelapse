@@ -103,6 +103,11 @@ int main(int argc, char **argv)
 		expect(!tinyError.isEmpty(), "rejected MKV open should return an operator-facing error");
 		expect(!QFileInfo::exists(output.filePath(QStringLiteral("tiny.mkv.partial"))),
 		       "rejected MKV open should not leave a partial file behind");
+		tinyError.clear();
+		expect(tinyWriter.open(output.filePath(QStringLiteral("retry.mkv.partial")),
+				       output.filePath(QStringLiteral("retry.mkv")), 64, 64, 30, tinyError),
+		       "an MKV writer should allow retry after a failed open");
+		expect(tinyWriter.finish(tinyError), qPrintable(tinyError));
 	}
 
 	const QString pngPath = output.filePath(QStringLiteral("frame_00000001.png"));

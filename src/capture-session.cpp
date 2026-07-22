@@ -192,6 +192,8 @@ void CaptureSession::rawVideoCallback(void *parameter, video_data *frame) noexce
 
 void CaptureSession::receiveFrame(const video_data &frame)
 {
+	// Check before taking a buffer, again under the queue lock, and after the copy: Stop may close
+	// acceptance at any boundary, and no frame may be enqueued after that transition.
 	if (!accepting_.load(std::memory_order_relaxed) || !frame.data[0] || frame.linesize[0] < rowBytes_) {
 		droppedFrames_.fetch_add(1, std::memory_order_relaxed);
 		return;

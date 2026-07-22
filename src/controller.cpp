@@ -115,7 +115,6 @@ void Controller::refreshControlsButton()
 		return;
 	const SessionStatus current = status();
 	const bool showCounter = active() && current.startedAt.isValid();
-	const QString elapsed = elapsedClock(current.startedAt);
 	if (stopping_) {
 		controlsButton_->setText(obs_module_text("Timelapse.ControlsStopping"));
 	} else if (current.state == SessionState::Starting) {
@@ -139,6 +138,7 @@ void Controller::refreshControlsButton()
 	controlsButton_->setChecked(active());
 	controlsCounter_->setVisible(showCounter);
 	if (showCounter) {
+		const QString elapsed = elapsedClock(current.startedAt);
 		controlsCounter_->setText(QString::fromUtf8(obs_module_text("Timelapse.ControlsCounterFormat"))
 						  .arg(current.writtenFrames)
 						  .arg(elapsed));
@@ -184,6 +184,7 @@ bool Controller::start(const CaptureSettings &settings, QString &error)
 		lastStatus_ = session->status();
 		return false;
 	}
+	// Save only after output initialization succeeds, so a bad path cannot replace saved-good settings.
 	if (!updateSettings(settings, error)) {
 		lastStatus_ = session->stop(QStringLiteral("configuration save failed"));
 		return false;

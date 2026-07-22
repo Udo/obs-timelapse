@@ -33,6 +33,23 @@ QString text(const char *key)
 	return QString::fromUtf8(obs_module_text(key));
 }
 
+QString stateText(SessionState state)
+{
+	switch (state) {
+	case SessionState::Starting:
+		return text("Timelapse.StateStarting");
+	case SessionState::Running:
+		return text("Timelapse.StateRunning");
+	case SessionState::Stopping:
+		return text("Timelapse.StateStopping");
+	case SessionState::Stopped:
+		return text("Timelapse.StateStopped");
+	case SessionState::Failed:
+		return text("Timelapse.StateFailed");
+	}
+	return {};
+}
+
 QString stateStyleSheet(SessionState state)
 {
 	switch (state) {
@@ -275,10 +292,7 @@ void TimelapseDialog::refreshStatus()
 	const bool active = controller_.active();
 	const bool stopping = controller_.stopping();
 
-	const std::array<const char *, 5> stateKeys = {"Timelapse.StateStarting", "Timelapse.StateRunning",
-						 "Timelapse.StateStopping", "Timelapse.StateStopped",
-						 "Timelapse.StateFailed"};
-	stateValue_->setText(text(stateKeys[static_cast<std::size_t>(status.state)]));
+	stateValue_->setText(stateText(status.state));
 	stateValue_->setStyleSheet(stateStyleSheet(status.state));
 
 	QString dropped = QString::number(status.droppedFrames);

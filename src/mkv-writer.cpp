@@ -45,6 +45,8 @@ bool MkvWriter::open(const QString &partialPath, const QString &finalPath, uint3
 
 	release();
 	QFile::remove(partialPath_);
+	partialPath_.clear();
+	finalPath_.clear();
 	return false;
 }
 
