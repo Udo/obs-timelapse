@@ -273,7 +273,7 @@ QString TimelapseDialog::timingText(const SessionStatus &status, bool active) co
 	const double videoSeconds = mkv ? static_cast<double>(status.writtenFrames) / status.playbackFps : 0.0;
 
 	if (active && status.startedAt.isValid()) {
-		const double elapsed = status.startedAt.msecsTo(QDateTime::currentDateTimeUtc()) / 1000.0;
+		const double elapsed = status.activeElapsedMilliseconds / 1000.0;
 		QString result = text("Timelapse.TimingActive")
 					 .arg(formatDuration(elapsed))
 					 .arg(formatDuration(status.effectiveIntervalSeconds));

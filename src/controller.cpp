@@ -19,10 +19,9 @@
 namespace timelapse {
 namespace {
 
-QString elapsedClock(const QDateTime &startedAt)
+QString elapsedClock(qint64 elapsedMilliseconds)
 {
-	const qint64 total =
-		startedAt.isValid() ? std::max<qint64>(0, startedAt.secsTo(QDateTime::currentDateTimeUtc())) : 0;
+	const qint64 total = std::max<qint64>(0, elapsedMilliseconds / 1000);
 	const qint64 hours = total / 3600;
 	return hours > 0 ? QStringLiteral("%1:%2:%3")
 				   .arg(hours)
@@ -155,7 +154,7 @@ void Controller::refreshControlsButton()
 	controlsPauseButton_->setEnabled(active() && !stopping_);
 	controlsCounter_->setVisible(showCounter);
 	if (showCounter) {
-		const QString elapsed = elapsedClock(current.startedAt);
+		const QString elapsed = elapsedClock(current.activeElapsedMilliseconds);
 		controlsCounter_->setText(QString::fromUtf8(obs_module_text("Timelapse.ControlsCounterFormat"))
 						  .arg(current.writtenFrames)
 						  .arg(elapsed));

@@ -95,6 +95,7 @@ bool CaptureSession::start(QString &error)
 		}
 
 		startedAt_ = QDateTime::currentDateTimeUtc();
+		activeStartedAt_ = std::chrono::steady_clock::now();
 		sessionPath_ = createUniqueSessionPath(makeSessionName(settings_.namePrefix, startedAt_));
 		if (!QDir().mkpath(sessionPath_)) {
 			error = QStringLiteral("Could not create the session directory: %1").arg(sessionPath_);
@@ -162,11 +163,21 @@ bool CaptureSession::start(QString &error)
 
 void CaptureSession::setPaused(bool paused) noexcept
 {
-	if (state_.load() != SessionState::Running)
+	if (state_.load() != SessionState::Running || paused_.load() == paused)
 		return;
-	paused_.store(paused);
+
 	// Synchronize with a callback between its initial check and enqueue boundary.
-	std::lock_guard<std::mutex> lock(queueMutex_);
+	std::lock_guard<std::mutex> queueLock(queueMutex_);
+	std::lock_guard<std::mutex> statusLock(statusMutex_);
+	if (state_.load() != SessionState::Running || paused_.load() == paused)
+		return;
+	const auto now = std::chrono::steady_clock::now();
+	if (paused) {
+		pauseStartedAt_ = now;
+	} else {
+		pausedDuration_ += now - pauseStartedAt_;
+	}
+	paused_.store(paused);
 }
 
 void CaptureSession::rawVideoCallback(void *parameter, video_data *frame) noexcept
@@ -438,9 +449,16 @@ SessionStatus CaptureSession::status() const
 	result.outputPath = sessionPath_;
 	{
 		std::lock_guard<std::mutex> lock(statusMutex_);
+		const auto now = std::chrono::steady_clock::now();
+		auto pausedDuration = pausedDuration_;
+		if (paused_.load())
+			pausedDuration += now - pauseStartedAt_;
+		result.activeElapsedMilliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(
+			now - activeStartedAt_ - pausedDuration)
+				.count();
 		result.error = error_;
+		result.paused = result.state == SessionState::Running && paused_.load();
 	}
-	result.paused = result.state == SessionState::Running && paused_.load();
 	return result;
 }
 

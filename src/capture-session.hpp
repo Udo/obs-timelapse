@@ -8,6 +8,7 @@
 #include <QString>
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
@@ -31,6 +32,7 @@ struct SessionStatus {
 	OutputMode mode = OutputMode::Png;
 	int playbackFps = 0;
 	QDateTime startedAt;
+	qint64 activeElapsedMilliseconds = 0;
 	QString outputPath;
 	QString error;
 	bool paused = false;
@@ -66,6 +68,9 @@ private:
 
 	const CaptureSettings settings_;
 	QDateTime startedAt_;
+	std::chrono::steady_clock::time_point activeStartedAt_;
+	std::chrono::steady_clock::time_point pauseStartedAt_;
+	std::chrono::steady_clock::duration pausedDuration_{};
 	QString sessionPath_;
 	uint32_t width_ = 0;
 	uint32_t height_ = 0;
