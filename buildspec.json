@@ -38,7 +38,7 @@
     },
     "name": "obs-timelapse",
     "displayName": "OBS Timelapse",
-    "version": "0.12.0",
+    "version": "0.11.3",
     "author": "Udo",
     "website": "https://git.openfu.com/udo/obs-timelapse",
     "email": "udo@openfu.com"
