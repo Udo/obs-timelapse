@@ -160,6 +160,15 @@ bool CaptureSession::start(QString &error)
 	return false;
 }
 
+void CaptureSession::setPaused(bool paused) noexcept
+{
+	if (state_.load() != SessionState::Running)
+		return;
+	paused_.store(paused);
+	// Synchronize with a callback between its initial check and enqueue boundary.
+	std::lock_guard<std::mutex> lock(queueMutex_);
+}
+
 void CaptureSession::rawVideoCallback(void *parameter, video_data *frame) noexcept
 {
 	if (!parameter || !frame)
@@ -192,8 +201,10 @@ void CaptureSession::rawVideoCallback(void *parameter, video_data *frame) noexce
 
 void CaptureSession::receiveFrame(const video_data &frame)
 {
-	// Check before taking a buffer, again under the queue lock, and after the copy: Stop may close
-	// acceptance at any boundary, and no frame may be enqueued after that transition.
+	// Check before taking a buffer, again under the queue lock, and after the copy: Pause or Stop may
+	// close acceptance at any boundary, and no frame may be enqueued after that transition.
+	if (paused_.load(std::memory_order_relaxed))
+		return;
 	if (!accepting_.load(std::memory_order_relaxed) || !frame.data[0] || frame.linesize[0] < rowBytes_) {
 		droppedFrames_.fetch_add(1, std::memory_order_relaxed);
 		return;
@@ -202,6 +213,8 @@ void CaptureSession::receiveFrame(const video_data &frame)
 	std::unique_ptr<Frame> destination;
 	{
 		std::lock_guard<std::mutex> lock(queueMutex_);
+		if (paused_.load(std::memory_order_relaxed))
+			return;
 		if (!accepting_.load(std::memory_order_relaxed) || availableFrames_.empty()) {
 			droppedFrames_.fetch_add(1, std::memory_order_relaxed);
 			return;
@@ -217,6 +230,10 @@ void CaptureSession::receiveFrame(const video_data &frame)
 
 	{
 		std::lock_guard<std::mutex> lock(queueMutex_);
+		if (paused_.load()) {
+			availableFrames_.push_back(std::move(destination));
+			return;
+		}
 		if (!accepting_.load()) {
 			availableFrames_.push_back(std::move(destination));
 			droppedFrames_.fetch_add(1, std::memory_order_relaxed);
@@ -423,6 +440,7 @@ SessionStatus CaptureSession::status() const
 		std::lock_guard<std::mutex> lock(statusMutex_);
 		result.error = error_;
 	}
+	result.paused = result.state == SessionState::Running && paused_.load();
 	return result;
 }
 

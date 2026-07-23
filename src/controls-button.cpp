@@ -36,14 +36,20 @@ ControlsWidgets injectControlsWidgets(QWidget *mainWindow) noexcept
 		button->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
 		button->setAutoDefault(false);
 		button->setCheckable(true);
+		auto *pauseButton = new QPushButton(row);
+		pauseButton->setObjectName(QStringLiteral("obsTimelapsePauseButton"));
+		pauseButton->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
+		pauseButton->setAutoDefault(false);
+		pauseButton->setVisible(false);
 		auto *counter = new QLabel(row);
 		counter->setFixedWidth(86);
 		counter->setAlignment(Qt::AlignCenter);
 		counter->setVisible(false);
 		rowLayout->addWidget(button, 1);
+		rowLayout->addWidget(pauseButton, 1);
 		rowLayout->addWidget(counter);
 		layout->insertWidget(layout->count() - 1, row);
-		return {row, button, counter};
+		return {row, button, pauseButton, counter};
 	} catch (...) {
 		if (row)
 			delete row.data();

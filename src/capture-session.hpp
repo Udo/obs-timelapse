@@ -33,6 +33,7 @@ struct SessionStatus {
 	QDateTime startedAt;
 	QString outputPath;
 	QString error;
+	bool paused = false;
 };
 
 class CaptureSession final {
@@ -44,6 +45,7 @@ public:
 	CaptureSession &operator=(const CaptureSession &) = delete;
 
 	bool start(QString &error);
+	void setPaused(bool paused) noexcept;
 	SessionStatus stop(const QString &reason) noexcept;
 	SessionStatus status() const;
 
@@ -73,6 +75,7 @@ private:
 
 	std::atomic<SessionState> state_{SessionState::Stopped};
 	std::atomic<bool> accepting_{false};
+	std::atomic<bool> paused_{false};
 	std::atomic<uint64_t> acceptedFrames_{0};
 	std::atomic<uint64_t> writtenFrames_{0};
 	std::atomic<uint64_t> droppedFrames_{0};

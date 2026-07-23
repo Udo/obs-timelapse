@@ -78,10 +78,12 @@ void Controller::installControlsButton() noexcept
 		const ControlsWidgets widgets = injectControlsWidgets(mainWindow_);
 		controlsRow_ = widgets.row;
 		controlsButton_ = widgets.button;
+		controlsPauseButton_ = widgets.pauseButton;
 		controlsCounter_ = widgets.counter;
-		if (!controlsRow_ || !controlsButton_ || !controlsCounter_)
+		if (!controlsRow_ || !controlsButton_ || !controlsPauseButton_ || !controlsCounter_)
 			return;
 		QObject::connect(controlsButton_, &QPushButton::clicked, [this] { toggleControlsCapture(); });
+		QObject::connect(controlsPauseButton_, &QPushButton::clicked, [this] { toggleControlsPause(); });
 		refreshControlsButton();
 	} catch (...) {
 		// A changed private OBS widget tree must leave the optional button absent.
@@ -89,6 +91,7 @@ void Controller::installControlsButton() noexcept
 			delete controlsRow_.data();
 		controlsRow_ = nullptr;
 		controlsButton_ = nullptr;
+		controlsPauseButton_ = nullptr;
 		controlsCounter_ = nullptr;
 	}
 }
@@ -109,9 +112,17 @@ void Controller::toggleControlsCapture()
 	refreshControlsButton();
 }
 
+void Controller::toggleControlsPause()
+{
+	if (!session_ || stopping_)
+		return;
+	session_->setPaused(!session_->status().paused);
+	refreshControlsButton();
+}
+
 void Controller::refreshControlsButton()
 {
-	if (!controlsButton_ || !controlsCounter_)
+	if (!controlsButton_ || !controlsPauseButton_ || !controlsCounter_)
 		return;
 	const SessionStatus current = status();
 	const bool showCounter = active() && current.startedAt.isValid();
@@ -136,6 +147,12 @@ void Controller::refreshControlsButton()
 	}
 	controlsButton_->setEnabled(!stopping_);
 	controlsButton_->setChecked(active());
+	controlsPauseButton_->setText(obs_module_text(current.paused ? "Timelapse.Resume" : "Timelapse.Pause"));
+	controlsPauseButton_->setToolTip(
+		obs_module_text(current.paused ? "Timelapse.ResumeHelp" : "Timelapse.PauseHelp"));
+	controlsPauseButton_->setAccessibleName(controlsPauseButton_->text());
+	controlsPauseButton_->setVisible(active());
+	controlsPauseButton_->setEnabled(active() && !stopping_);
 	controlsCounter_->setVisible(showCounter);
 	if (showCounter) {
 		const QString elapsed = elapsedClock(current.startedAt);
@@ -252,6 +269,7 @@ void Controller::shutdown() noexcept
 			delete controlsRow_.data();
 		controlsRow_ = nullptr;
 		controlsButton_ = nullptr;
+		controlsPauseButton_ = nullptr;
 		controlsCounter_ = nullptr;
 		if (stopping_)
 			reapStopThread();

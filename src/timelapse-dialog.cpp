@@ -292,7 +292,7 @@ void TimelapseDialog::refreshStatus()
 	const bool active = controller_.active();
 	const bool stopping = controller_.stopping();
 
-	stateValue_->setText(stateText(status.state));
+	stateValue_->setText(status.paused ? text("Timelapse.StatePaused") : stateText(status.state));
 	stateValue_->setStyleSheet(stateStyleSheet(status.state));
 
 	QString dropped = QString::number(status.droppedFrames);

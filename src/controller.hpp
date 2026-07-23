@@ -40,12 +40,14 @@ private:
 	void maintainSession();
 	void reapStopThread();
 	void toggleControlsCapture();
+	void toggleControlsPause();
 	void refreshControlsButton();
 
 	QWidget *mainWindow_ = nullptr;
 	QPointer<TimelapseDialog> dialog_;
 	QPointer<QWidget> controlsRow_;
 	QPointer<QPushButton> controlsButton_;
+	QPointer<QPushButton> controlsPauseButton_;
 	QPointer<QLabel> controlsCounter_;
 	std::unique_ptr<QTimer> maintenanceTimer_;
 	std::unique_ptr<CaptureSession> session_;

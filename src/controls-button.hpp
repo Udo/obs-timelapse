@@ -9,6 +9,7 @@ namespace timelapse {
 struct ControlsWidgets {
 	QWidget *row = nullptr;
 	QPushButton *button = nullptr;
+	QPushButton *pauseButton = nullptr;
 	QLabel *counter = nullptr;
 };
 
